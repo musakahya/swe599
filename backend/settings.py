@@ -29,6 +29,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     'swe-599-watermark.herokuapp.com',
+    'localhost',
 ]
 
 
