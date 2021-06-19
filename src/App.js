@@ -243,7 +243,7 @@ export default function App() {
           {
             isLoading === true || isLoading === false ?
               <FormControl className={classes.formControl} fullWidth>
-                <Result isLoading={isLoading} data={data} />
+                {data && data.TIME_DOMAIN_NO_ATTACK_SNR ? <Result isLoading={isLoading} data={data}/> : ""}
               </FormControl>
               : ""
           }
