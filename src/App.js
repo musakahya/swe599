@@ -21,8 +21,8 @@ function Copyright() {
   return (
     <Typography variant="body2" color="textSecondary" align="center">
       {'Copyright © '}
-      <Link color="inherit" href="https://material-ui.com/">
-        Your Website
+      <Link color="inherit" href="https://swe-599-watermark.herokuapp.com/">
+        Audio Watermarker
       </Link>{' '}
       {new Date().getFullYear()}
       {'.'}
@@ -74,6 +74,7 @@ export default function App() {
   const classes = useStyles();
 
   const [isLoading, setLoading] = React.useState();
+  const [data, setData] = React.useState();
 
   const [audio, setAudio] = React.useState('');
   const [openAudio, setOpenAudio] = React.useState(false);
@@ -109,7 +110,6 @@ export default function App() {
   };
 
   const handleChangeDomain = (event) => {
-    console.log(event.target.value);
     setDomain(event.target.value);
   };
 
@@ -124,7 +124,6 @@ export default function App() {
   const handleStart = () => {
     setLoading(true);
     let urlPath = '';
-    console.log(domain);
     if(domain === "time") urlPath = "time_domain";
     else if(domain === "wavelet") urlPath = "wavelet";
     else if(domain === "cosine") urlPath = "cosine";
@@ -132,7 +131,7 @@ export default function App() {
     axios.get('https://swe-599-watermark.herokuapp.com/' + urlPath + '/')
       .then(function (response) {
         // handle success
-        console.log(response);
+        setData(response.data);
         setLoading(false);
       })
       .catch(function (error) {
@@ -237,14 +236,14 @@ export default function App() {
             </Select>
           </FormControl>
           <FormControl className={classes.formControl} fullWidth>
-            <Button variant="contained" color="primary" onClick={handleStart}>
+            <Button disabled={domain === "" || image === "" || audio === ""} variant="contained" color="primary" onClick={handleStart}>
               {isLoading === true ? "Working..." : (isLoading === false ? "Completed" : "Start Watermarking")}
             </Button>
           </FormControl>
           {
             isLoading === true || isLoading === false ?
               <FormControl className={classes.formControl} fullWidth>
-                <Result isLoading={isLoading} />
+                <Result isLoading={isLoading} data={data} />
               </FormControl>
               : ""
           }
@@ -252,11 +251,8 @@ export default function App() {
       </main>
       {/* Footer */}
       <footer className={classes.footer}>
-        <Typography variant="h6" align="center" gutterBottom>
-          Footer
-        </Typography>
         <Typography variant="subtitle1" align="center" color="textSecondary" component="p">
-          Something here to give the footer a purpose!
+          Protect your audio
         </Typography>
         <Copyright />
       </footer>

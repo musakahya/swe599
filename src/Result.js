@@ -32,30 +32,31 @@ const useStyles = makeStyles((theme) => ({
     }
 }));
 
-const data = [
-    {
-        "name": "No attack",
-        "SNR (dB)": 4000,
-        "Robustness": 3000,
-    },
-    {
-        "name": "Low Pass Filter",
-        "SNR (dB)": 2000,
-        "Robustness": 3000,
-    },
-    {
-        "name": "Shearing",
-        "SNR (dB)": 1000,
-        "Robustness": 3000,
-    },
-    {
-        "name": "AWGN",
-        "SNR (dB)": 4000,
-        "Robustness": 3000,
-    },
-]
+export default function Result({ isLoading, data }) {
 
-export default function Result({ isLoading }) {
+    const chartData = [
+        {
+            "name": "No attack",
+            "SNR (dB)": data.TIME_DOMAIN_NO_ATTACK_SNR,
+            "Robustness": data.TIME_DOMAIN_NO_ATTACK_RO,
+        },
+        {
+            "name": "Low Pass Filter",
+            "SNR (dB)": data.TIME_DOMAIN_LOW_PASS_SNR,
+            "Robustness": data.TIME_DOMAIN_LOW_PASS_RO,
+        },
+        {
+            "name": "Shearing",
+            "SNR (dB)": data.TIME_DOMAIN_SHEARING_SNR,
+            "Robustness": data.TIME_DOMAIN_SHEARING_RO,
+        },
+        {
+            "name": "AWGN",
+            "SNR (dB)": data.TIME_DOMAIN_AWGN_SNR,
+            "Robustness": data.TIME_DOMAIN_AWGN_RO,
+        },
+    ]
+
     const classes = useStyles();
 
     return (
@@ -169,7 +170,7 @@ export default function Result({ isLoading }) {
                                         alignItems="start"
                                     >
                                         <Typography className={classes.chartHeading}>SNR</Typography>
-                                        <BarChart width={730} height={250} data={data}>
+                                        <BarChart width={730} height={250} data={chartData}>
                                             <CartesianGrid strokeDasharray="3 3" />
                                             <XAxis dataKey="name" />
                                             <YAxis />
@@ -178,7 +179,7 @@ export default function Result({ isLoading }) {
                                             <Bar dataKey="SNR (dB)" fill="#8884d8" />
                                         </BarChart>
                                         <Typography className={classes.chartHeading}>Robustness</Typography>
-                                        <BarChart width={730} height={250} data={data}>
+                                        <BarChart width={730} height={250} data={chartData}>
                                             <CartesianGrid strokeDasharray="3 3" />
                                             <XAxis dataKey="name" />
                                             <YAxis />
