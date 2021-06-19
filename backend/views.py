@@ -16,11 +16,15 @@ from scipy import signal, stats
 
 from PIL import Image
 
+from io import BytesIO
+
 import math
 
 import os.path
 
 import json
+
+import base64
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -29,28 +33,6 @@ index = never_cache(TemplateView.as_view(template_name='index.html'))
 
 IMAGE_PATH = os.path.join(BASE, 'resources/wm.bmp')
 AUDIO_PATH = os.path.join(BASE, 'resources/100grand.wav')
-
-DWT_DOMAIN_ORIGINAL_IMAGE = ""
-DWT_DOMAIN_ORIGINAL_AUDIO = ""
-DWT_DOMAIN_WATERMARKED_IMAGE = ""
-DWT_DOMAIN_WATERMARKED_AUDIO = ""
-DWT_DOMAIN_LOW_PASS_SNR = ""
-DWT_DOMAIN_LOW_PASS_RO = ""
-DWT_DOMAIN_SHEARING_SNR = ""
-DWT_DOMAIN_SHEARING_RO = ""
-DWT_DOMAIN_AWGN_SNR = ""
-DWT_DOMAIN_AWGN_RO = ""
-
-DCT_DOMAIN_ORIGINAL_IMAGE = ""
-DCT_DOMAIN_ORIGINAL_AUDIO = ""
-DCT_DOMAIN_WATERMARKED_IMAGE = ""
-DCT_DOMAIN_WATERMARKED_AUDIO = ""
-DCT_DOMAIN_LOW_PASS_SNR = ""
-DCT_DOMAIN_LOW_PASS_RO = ""
-DCT_DOMAIN_SHEARING_SNR = ""
-DCT_DOMAIN_SHEARING_RO = ""
-DCT_DOMAIN_AWGN_SNR = ""
-DCT_DOMAIN_AWGN_RO = ""
 
 def time_domain(self):
 
@@ -90,29 +72,25 @@ def timeDomainEmbed():
 
     response = {}
     
-    values = timeDomainDetect(audioBytes, originalAudioBytes, watermarkImage, ones)
-    #response["TIME_DOMAIN_NO_ATTACK_WATERMARKED_IMAGE"] = values[0]
-    response["TIME_DOMAIN_NO_ATTACK_SNR"] = values[1]
-    response["TIME_DOMAIN_NO_ATTACK_RO"] = values[2]
+    values = timeDomainDetect(audioBytes, originalAudioBytes, watermarkImage, ones, "no_attack")
+    response["NO_ATTACK_SNR"] = values[1]
+    response["NO_ATTACK_RO"] = values[2]
 
-    values = timeDomainDetect(LowPass(audioBytes, 0.5), originalAudioBytes, watermarkImage, ones)
-    #response["TIME_DOMAIN_LOW_PASS_WATERMARKED_IMAGE"] = values[0]
-    response["TIME_DOMAIN_LOW_PASS_SNR"] = values[1]
-    response["TIME_DOMAIN_LOW_PASS_RO"] = values[2]
+    values = timeDomainDetect(LowPass(audioBytes, 0.5), originalAudioBytes, watermarkImage, ones, "low_pass")
+    response["LOW_PASS_SNR"] = values[1]
+    response["LOW_PASS_RO"] = values[2]
 
-    values = timeDomainDetect(Shearing(audioBytes), originalAudioBytes, watermarkImage, ones)
-    #response["TIME_DOMAIN_SHEARING_WATERMARKED_IMAGE"] = values[0]
-    response["TIME_DOMAIN_SHEARING_SNR"] = values[1]
-    response["TIME_DOMAIN_SHEARING_RO"] = values[2]
+    values = timeDomainDetect(Shearing(audioBytes), originalAudioBytes, watermarkImage, ones, "shearing")
+    response["SHEARING_SNR"] = values[1]
+    response["SHEARING_RO"] = values[2]
 
-    values = timeDomainDetect(AWGN(audioBytes, -9), originalAudioBytes, watermarkImage, ones)
-    #response["TIME_DOMAIN_AWGN_WATERMARKED_IMAGE"] = values[0]
-    response["TIME_DOMAIN_AWGN_SNR"] = values[1]
-    response["TIME_DOMAIN_AWGN_RO"] = values[2]
+    values = timeDomainDetect(AWGN(audioBytes, -9), originalAudioBytes, watermarkImage, ones, "awgn")
+    response["AWGN_SNR"] = values[1]
+    response["AWGN_RO"] = values[2]
 
     return response
     
-def timeDomainDetect(audioBytes, originalAudioBytes, watermarkImage, ones):
+def timeDomainDetect(audioBytes, originalAudioBytes, watermarkImage, ones, attack):
     counterSS = 1
     byteCount = 1
     bitCount = 1
@@ -144,8 +122,8 @@ def timeDomainDetect(audioBytes, originalAudioBytes, watermarkImage, ones):
     pixelsArray.resize(128, 128)
 
     img = Image.fromarray(pixelsArray).convert('LA')
-    return [img, computeSNR(audioBytes, originalAudioBytes), compareImages(watermarkImage, pixelsArray)]
-    # img.save("lena.png")
+    img.save(os.path.join(BASE, '../public/static/time_domain_' + attack + '.png'))
+    return ["time_domain_" + attack + ".png", computeSNR(audioBytes, originalAudioBytes), compareImages(watermarkImage, pixelsArray)]
 
 def LowPass(audioBytes, value):
     b, a = signal.butter(2, value)
@@ -269,29 +247,25 @@ def waveletEmbed():
 
     response = {}
     
-    values = waveletDetect(watermarkedWavelet, originalWavelet, watermarkImage)
-    #response["TIME_DOMAIN_NO_ATTACK_WATERMARKED_IMAGE"] = values[0]
-    response["DWT_DOMAIN_NO_ATTACK_SNR"] = values[1]
-    response["DWT_DOMAIN_NO_ATTACK_RO"] = values[2]
+    values = waveletDetect(watermarkedWavelet, originalWavelet, watermarkImage, "no_attack")
+    response["NO_ATTACK_SNR"] = values[1]
+    response["NO_ATTACK_RO"] = values[2]
 
-    values = waveletDetect(LowPass(watermarkedWavelet, 0.99), originalWavelet, watermarkImage)
-    #response["TIME_DOMAIN_LOW_PASS_WATERMARKED_IMAGE"] = values[0]
-    response["DWT_DOMAIN_LOW_PASS_SNR"] = values[1]
-    response["DWT_DOMAIN_LOW_PASS_RO"] = values[2]
+    values = waveletDetect(LowPass(watermarkedWavelet, 0.99), originalWavelet, watermarkImage, "low_pass")
+    response["LOW_PASS_SNR"] = values[1]
+    response["LOW_PASS_RO"] = values[2]
 
-    values = waveletDetect(Shearing(watermarkedWavelet), originalWavelet, watermarkImage)
-    #response["TIME_DOMAIN_SHEARING_WATERMARKED_IMAGE"] = values[0]
-    response["DWT_DOMAIN_SHEARING_SNR"] = values[1]
-    response["DWT_DOMAIN_SHEARING_RO"] = values[2]
+    values = waveletDetect(Shearing(watermarkedWavelet), originalWavelet, watermarkImage, "shearing")
+    response["SHEARING_SNR"] = values[1]
+    response["SHEARING_RO"] = values[2]
 
-    values = waveletDetect(AWGN(watermarkedWavelet, -9), originalWavelet, watermarkImage)
-    #response["TIME_DOMAIN_AWGN_WATERMARKED_IMAGE"] = values[0]
-    response["DWT_DOMAIN_AWGN_SNR"] = values[1]
-    response["DWT_DOMAIN_AWGN_RO"] = values[2]
+    values = waveletDetect(AWGN(watermarkedWavelet, -9), originalWavelet, watermarkImage, "awgn")
+    response["AWGN_SNR"] = values[1]
+    response["AWGN_RO"] = values[2]
 
     return response
 
-def waveletDetect(watermarkedWavelet, originalWavelet, watermarkImage):
+def waveletDetect(watermarkedWavelet, originalWavelet, watermarkImage, attack):
 
     count2 = 1
     extractedPixels = np.zeros((16384, 1))
@@ -309,5 +283,5 @@ def waveletDetect(watermarkedWavelet, originalWavelet, watermarkImage):
     pixelsMatrix = extractedPixels.reshape(size)
 
     img = Image.fromarray(pixelsMatrix).convert('LA')
-
-    return [img, computeSNR(watermarkedWavelet, originalWavelet), compareImages(watermarkImage, pixelsMatrix)]
+    img.save(os.path.join(BASE, '../public/static/wavelet_' + attack + '.png'))
+    return ["wavelet_" + attack + ".png", computeSNR(watermarkedWavelet, originalWavelet), compareImages(watermarkImage, pixelsMatrix)]
