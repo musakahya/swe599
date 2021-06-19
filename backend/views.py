@@ -4,7 +4,9 @@ from django.views.decorators.cache import never_cache
 from django.http import HttpResponse
 from django.http import JsonResponse
 
+import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import matplotlib.cm as cm
 
 import numpy as np
 from numpy import sum, isrealobj, sqrt
@@ -13,6 +15,7 @@ from numpy.random import standard_normal
 from scipy.io import wavfile
 import scipy.io
 from scipy import signal, stats
+from scipy.fftpack import fft, dct, idct
 
 from PIL import Image
 
@@ -285,3 +288,107 @@ def waveletDetect(watermarkedWavelet, originalWavelet, watermarkImage, attack):
     img = Image.fromarray(pixelsMatrix).convert('LA')
     img.save(os.path.join(BASE, '../public/static/wavelet_' + attack + '.png'))
     return ["wavelet_" + attack + ".png", computeSNR(watermarkedWavelet, originalWavelet), compareImages(watermarkImage, pixelsMatrix)]
+
+def cosine(self):
+    response = cosineEmbed()
+    if response:
+        return JsonResponse(response, safe=False)
+
+def convertToBinary(image):
+    col = Image.open(image)
+    gray = col.convert('L')
+
+    bw = np.asarray(gray).copy()
+
+    bw[bw < 128] = 0    # Black
+    bw[bw >= 128] = 1 # White
+
+    return bw
+
+def cosineEmbed():
+    watermarkImage = mpimg.imread(IMAGE_PATH)
+    watermarkImageBinary = convertToBinary(IMAGE_PATH)
+
+    [a, b] = watermarkImageBinary.shape
+
+    bitString = watermarkImageBinary.reshape(1, a * b, order='F')
+    size = (1, a * b)
+    mString = np.zeros(size)
+
+    x = range(1, a * b, 1)
+
+    for i in x:
+        if bitString[0][i - 1] > 0:
+            mString[0][i - 1] = 1
+        else:
+            mString[0][i - 1] = -1
+
+    sampleRate, originalAudio = wavfile.read(AUDIO_PATH)
+
+    originalAudio = [(x - 128)/128 for x in originalAudio]
+
+    # Embedding
+    dcty = dct(originalAudio, norm='ortho')
+    dcty1 = dcty.copy()
+    k = 100
+    aa = 0.2
+
+    x = range(0, (a * b) - 1, 1)
+
+    for j in x:
+        if dcty[k + j * 2] > 0:
+            dcty1[k + j * 2] = (1 + aa * mString[0][j]) * abs(dcty[k + j * 2])
+        else:
+            dcty1[k + j * 2] = -(1 + aa * mString[0][j]) * abs(dcty[k + j * 2])
+        if dcty[k + j * 2 - 1] > 0:
+            dcty1[k + j * 2 - 1] = (1 + aa * mString[0][j]) * abs(dcty[k + j * 2 - 1])
+        else:
+            dcty1[k + j * 2 - 1] = -(1 + aa * mString[0][j]) * abs(dcty[k + j * 2 - 1])
+
+    watermarkedAudio = idct(dcty1, norm='ortho')
+
+    response = {}
+    
+    values = cosineDetect(watermarkedAudio, originalAudio, a, b, watermarkImage, "no_attack")
+    response["NO_ATTACK_SNR"] = values[1]
+    response["NO_ATTACK_RO"] = values[2]
+
+    values = cosineDetect(LowPass(watermarkedAudio, 0.99), originalAudio, a, b, watermarkImage, "low_pass")
+    response["LOW_PASS_SNR"] = values[1]
+    response["LOW_PASS_RO"] = values[2]
+
+    values = cosineDetect(Shearing(watermarkedAudio), originalAudio, a, b, watermarkImage, "shearing")
+    response["SHEARING_SNR"] = values[1]
+    response["SHEARING_RO"] = values[2]
+
+    values = cosineDetect(AWGN(watermarkedAudio, -9), originalAudio, a, b, watermarkImage, "awgn")
+    response["AWGN_SNR"] = values[1]
+    response["AWGN_RO"] = values[2]
+
+    return response
+
+def cosineDetect(watermarkedAudio, originalAudio, a, b, watermarkImage, attack):
+    dcty = dct(originalAudio, norm='ortho')
+    dctyout = dct(watermarkedAudio, norm='ortho')
+    k = 100
+
+    size = (1, a * b)
+    msout = np.zeros(size)
+
+    x = range(0, (a * b) - 1, 1)
+
+    for i in x:
+        count = 0
+        if abs(dctyout[k + i * 2]) > abs(dcty[k + i * 2]):
+            count = count + 1
+        if abs(dctyout[k + i * 2 - 1]) > abs(dcty[k + i * 2 - 1]):
+            count = count + 1
+        if count > 1:
+            msout[0][i] = 1
+        else:
+            msout[0][i] = 0
+
+    bitString = msout.reshape(a, b, order='F')
+
+    plt.imsave(os.path.join(BASE, '../public/static/cosine_' + attack + '.png'), bitString, cmap=cm.gray)
+    return ["cosine_" + attack + ".png", computeSNR(watermarkedAudio, originalAudio), compareImages(watermarkImage, bitString)]
